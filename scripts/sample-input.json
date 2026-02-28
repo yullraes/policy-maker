@@ -1,0 +1,10 @@
+{
+  "SERVICE_ONE_LINER": "음식점과 소비자를 연결하는 배달 중개 플랫폼",
+  "USER_TYPES": "소비자, 음식점 사장님, 배달 라이더",
+  "REVENUE_MODEL": "배달비 + 음식점 수수료 + 광고",
+  "LIFECYCLE_OVERVIEW": "주문 → 음식점 수락 → 라이더 배정 → 픽업 → 배달 → 완료 → 정산",
+  "INTEGRATIONS": "PG(토스페이먼츠), 지도(카카오맵), 실시간 위치 추적",
+  "TOP_KPIS": "주문 전환율, 배달 시간, 라이더 이탈률",
+  "ORG_ROLES": "CS팀, 라이더 관리팀, 음식점 파트너 매니저",
+  "CLI_TOOL": "gemini"
+}

@@ -2,22 +2,6 @@
 
 > 업계 비전문가가 서비스 기획 시 **"상상하지도 못하는 정책"**을 발굴하기 위한 멀티 페르소나 AI 에이전트 워크플로우
 
-## 아키텍처
-
-```txt
-SKILL (AI 대화)                    Node.js 스크립트 (subprocess)
-┌──────────────────┐              ┌──────────────────────────────────┐
-│policy-maker-init │   invoke    │ scripts/run.mjs                  │
-│                  │ ──────────→  │                                  │
-│ • Q&A 수집       │  (JSON)       │Phase 1: domain-strategist        │
-│ • CLI 도구 선택   │              │Phase 2: expert ×4  (Promise.all) │
-│                  │              │Phase 3: attacker ×3 (Promise.all)│
-└──────────────────┘              └──────────────────────────────────┘
-                                           │
-                                           ▼
-                                  .policy-maker/{session}/artifacts/
-```
-
 ## 에이전트 구성
 
 ### Expert Panel (방어측)

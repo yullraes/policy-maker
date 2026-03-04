@@ -12,9 +12,11 @@
  */
 
 import { readFile, writeFile, mkdir, access } from "node:fs/promises";
-import { resolve, join } from "node:path";
+import { resolve, join, dirname } from "node:path";
 
-import { CLI_STRATEGIES, resolveBin, detectAvailableCLIs, runCli } from "./cli.mjs";
+import { generateText } from "ai";
+import { createGeminiProvider } from "ai-sdk-provider-gemini-cli";
+
 import { PHASE_DEFS } from "./phases.mjs";
 import {
     findProjectRoot,
@@ -23,6 +25,7 @@ import {
     buildServiceContext,
     resolveVariables,
     generateSummary,
+    generateFullCompilation,
 } from "./utils.mjs";
 
 // ────────────────────────────────────────
@@ -32,12 +35,11 @@ import {
 async function main() {
     const args = process.argv.slice(2);
     const inputIdx = args.indexOf("--input");
-    const cliIdx = args.indexOf("--cli");
     const dryRun = args.includes("--dry-run");
 
     // ── 1. 입력 파일 로드 ──
     if (inputIdx === -1 || !args[inputIdx + 1]) {
-        console.error("Usage: node scripts/run.mjs --input <path-to-input.json> [--cli gemini] [--dry-run]");
+        console.error("Usage: node scripts/run.mjs --input <path-to-input.json> [--dry-run]");
         process.exit(1);
     }
 
@@ -54,43 +56,12 @@ async function main() {
     const projectRoot = findProjectRoot();
     console.log(`📂 프로젝트 루트: ${projectRoot}`);
 
-    // ── 3. CLI 도구 결정 ──
-    let cliName = cliIdx !== -1 ? args[cliIdx + 1] : input.CLI_TOOL;
-
-    if (!cliName) {
-        const available = detectAvailableCLIs();
-        console.log(`\n🔍 사용 가능한 LLM CLI 감지 중...`);
-        for (const name of Object.keys(CLI_STRATEGIES)) {
-            const found = available.some((a) => a.name === name);
-            console.log(`  ${found ? "✅" : "❌"} ${name}`);
-        }
-
-        if (available.length === 0) {
-            console.error("\n❌ 설치된 LLM CLI 도구를 찾을 수 없습니다.");
-            console.error("   gemini, claude, codex, opencode 중 하나를 설치해주세요.");
-            process.exit(1);
-        }
-
-        cliName = available[0].name;
-        console.log(`\n👉 ${cliName}을(를) 사용합니다. (변경: --cli <name>)`);
-    }
-
-    const strategy = CLI_STRATEGIES[cliName];
-    if (!strategy) {
-        console.error(`❌ 알 수 없는 CLI 도구: ${cliName}`);
-        console.error(`   지원 목록: ${Object.keys(CLI_STRATEGIES).join(", ")}`);
-        process.exit(1);
-    }
-
-    // ── 3.5. 바이너리 풀패스 resolve (shell 우회) ──
-    let binPath;
-    try {
-        binPath = resolveBin(strategy.bin);
-        console.log(`🔧 CLI: ${cliName} → ${binPath}`);
-    } catch (err) {
-        console.error(`❌ ${err.message}`);
-        process.exit(1);
-    }
+    // ── 3. AI SDK Provider 초기화 ──
+    // oauth-personal: ~/.gemini/oauth_creds.json을 사용
+    console.log(`🔍 AI SDK Provider 초기화 중...`);
+    const gemini = createGeminiProvider({
+        authType: "oauth-personal",
+    });
 
     // ── 4. 세션 디렉토리 생성 ──
     const sessionId = createSessionId();
@@ -111,7 +82,7 @@ async function main() {
 
     // ── DRY RUN ──
     if (dryRun) {
-        console.log("🏃 DRY RUN 모드 — 실제 CLI 호출 없이 구성만 확인합니다.\n");
+        console.log("🏃 DRY RUN 모드 — 실제 호출 없이 구성만 확인합니다.\n");
         console.log("SERVICE_CONTEXT:");
         console.log(serviceContext);
         console.log("");
@@ -154,14 +125,26 @@ async function main() {
             );
 
             // 프롬프트 빌드
-            const prompt = await buildPrompt(promptPath, resolvedVars);
+            const promptContent = await buildPrompt(promptPath, resolvedVars);
 
             console.log(`  ⏳ ${task.name} 실행 중...`);
 
-            // CLI 호출 (resolveBin 결과 사용)
-            await runCli(binPath, strategy.args, prompt, outputPath);
+            try {
+                // AI SDK 호출
+                const { text } = await generateText({
+                    model: gemini("gemini-2.5-pro"), // 기본 모델 사용
+                    prompt: promptContent,
+                });
 
-            console.log(`  ✅ ${task.name} → ${task.outputFile}`);
+                // 결과 저장
+                await mkdir(dirname(outputPath), { recursive: true });
+                await writeFile(outputPath, text, "utf-8");
+
+                console.log(`  ✅ ${task.name} → ${task.outputFile}`);
+            } catch (err) {
+                console.error(`  ❌ ${task.name} 오류: ${err.message}`);
+                throw err;
+            }
         });
 
         // Phase 내 태스크는 Promise.all로 병렬 실행
@@ -173,14 +156,16 @@ async function main() {
             process.exit(1);
         }
 
-        // Phase 2 완료 후 expert summary 생성
+        // Phase 2 완료 후 expert summary 및 full compilation 생성
         if (phase.name.includes("Expert")) {
             await generateSummary(artifactDir, "R1/expert");
+            await generateFullCompilation(artifactDir, "R1/expert");
         }
 
-        // Phase 3 완료 후 attacker summary 생성
+        // Phase 3 완료 후 attacker summary 및 full compilation 생성
         if (phase.name.includes("Attacker")) {
             await generateSummary(artifactDir, "R1/attacker");
+            await generateFullCompilation(artifactDir, "R1/attacker");
         }
     }
 

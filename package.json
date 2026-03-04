@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "ai": "^6.0.104",
+    "ai-sdk-provider-gemini-cli": "^2.0.1"
+  }
+}

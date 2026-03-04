@@ -147,7 +147,7 @@ export async function generateSummary(artifactDir, subDir) {
         let extracted = 0;
 
         for (const line of lines) {
-            if (line.startsWith("## ") || line.startsWith("# ")) {
+            if (line.startsWith("### ") || line.startsWith("## ") || line.startsWith("# ")) {
                 if (extracting && extracted > 5) break;
                 extracting = true;
                 summary += `${line}\n`;
@@ -166,4 +166,42 @@ export async function generateSummary(artifactDir, subDir) {
     const summaryPath = join(dir, "_summary.md");
     await writeFile(summaryPath, summary, "utf-8");
     console.log(`  📋 ${subDir}/_summary.md 생성 완료`);
+}
+
+/**
+ * 에이전트 결과 파일들의 **전체 내용**을 하나의 파일로 병합한다.
+ * Phase 4와 같이 컨텍스트 유실 없이 전체 컨텍스트를 LLM에 전달할 때 사용한다.
+ */
+export async function generateFullCompilation(artifactDir, subDir) {
+    const dir = join(artifactDir, subDir);
+
+    let files;
+    try {
+        files = await readdir(dir);
+    } catch {
+        return;
+    }
+
+    const mdFiles = files.filter((f) => f.endsWith(".md") && !f.startsWith("_"));
+
+    let compilation = `---\ngenerated: true\ntimestamp: ${new Date().toISOString()}\nsources:\n`;
+    for (const f of mdFiles) {
+        compilation += `  - ${f}\n`;
+    }
+    compilation += "---\n\n# Full Compilation\n\n";
+
+    for (const f of mdFiles) {
+        const content = await readFile(join(dir, f), "utf-8");
+        const agentName = basename(f, ".md");
+
+        compilation += `\n\n========================================================================\n`;
+        compilation += `[AGENT REPORT: ${agentName}]\n`;
+        compilation += `========================================================================\n\n`;
+        compilation += content;
+        compilation += `\n\n`;
+    }
+
+    const compilationPath = join(dir, "_full_compilation.md");
+    await writeFile(compilationPath, compilation, "utf-8");
+    console.log(`  📚 ${subDir}/_full_compilation.md 생성 완료`);
 }

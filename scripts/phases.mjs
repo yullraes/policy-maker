@@ -12,9 +12,9 @@
  */
 
 export const PHASE_DEFS = [
-    // Phase 1: Domain Strategist (순차 — 1개 태스크)
+    // Phase 1: Strategy & Monetization (병렬 — 2개 태스크)
     {
-        name: "Phase 1: Domain Strategist",
+        name: "Phase 1: Strategy & Monetization",
         tasks: [
             {
                 name: "domain-strategist",
@@ -28,10 +28,22 @@ export const PHASE_DEFS = [
                     INTEGRATIONS: "input",
                 },
             },
+            {
+                name: "growth-lead",
+                promptFile: "expert/growth-lead/prompt.md",
+                outputFile: "R1/growth_strategy.md",
+                vars: {
+                    SERVICE_ONE_LINER: "input",
+                    USER_TYPES: "input",
+                    REVENUE_MODEL: "input",
+                    LIFECYCLE_OVERVIEW: "input",
+                    INTEGRATIONS: "input",
+                },
+            },
         ],
     },
 
-    // Phase 2: Expert Panel (병렬 — 4개 태스크)
+    // Phase 2: Expert Panel (병렬 — 3개 태스크)
     {
         name: "Phase 2: Expert Panel",
         tasks: [
@@ -42,7 +54,7 @@ export const PHASE_DEFS = [
                 vars: {
                     SERVICE_CONTEXT: "computed",
                     DOMAIN_CHARTER: "artifact:R1/domain_charter.md",
-                    BREACH_REPORT: "empty",
+                    GROWTH_STRATEGY: "artifact:R1/growth_strategy.md", // 공격적 수익화 초안
                 },
             },
             {
@@ -52,7 +64,7 @@ export const PHASE_DEFS = [
                 vars: {
                     SERVICE_CONTEXT: "computed",
                     DOMAIN_CHARTER: "artifact:R1/domain_charter.md",
-                    BREACH_REPORT: "empty",
+                    GROWTH_STRATEGY: "artifact:R1/growth_strategy.md",
                 },
             },
             {
@@ -62,17 +74,7 @@ export const PHASE_DEFS = [
                 vars: {
                     SERVICE_CONTEXT: "computed",
                     DOMAIN_CHARTER: "artifact:R1/domain_charter.md",
-                    BREACH_REPORT: "empty",
-                },
-            },
-            {
-                name: "policy-security",
-                promptFile: "expert/policy-security/prompt.md",
-                outputFile: "R1/expert/policy_security.md",
-                vars: {
-                    SERVICE_CONTEXT: "computed",
-                    DOMAIN_CHARTER: "artifact:R1/domain_charter.md",
-                    BREACH_REPORT: "empty",
+                    GROWTH_STRATEGY: "artifact:R1/growth_strategy.md",
                 },
             },
         ],
@@ -110,6 +112,24 @@ export const PHASE_DEFS = [
                     SERVICE_CONTEXT: "computed",
                     DOMAIN_CHARTER: "artifact:R1/domain_charter.md",
                     EXPERT_POLICIES: "artifact:R1/expert/_summary.md",
+                },
+            },
+        ],
+    },
+
+    // Phase 4: Final Synthesis (Review) (단일 태스크)
+    {
+        name: "Phase 4: Final Synthesis",
+        tasks: [
+            {
+                name: "policy-reviewer",
+                promptFile: "expert/policy-reviewer/prompt.md",
+                outputFile: "R1/final_patched_policy.md",
+                vars: {
+                    SERVICE_CONTEXT: "computed",
+                    DOMAIN_CHARTER: "artifact:R1/domain_charter.md",
+                    EXPERT_POLICIES: "artifact:R1/expert/_full_compilation.md",
+                    ATTACKER_SCENARIOS: "artifact:R1/attacker/_full_compilation.md",
                 },
             },
         ],
